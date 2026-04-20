@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Wedding Quiz — 管理者パネル</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Noto+Sans+JP:wght@400;500&display=swap');
+  :root {
+    --gold: #C8A96E; --gold-light: #F0E2C4; --gold-dark: #8B6914;
+    --cream: #FDF8F0; --cream2: #F5EDD8;
+    --brown: #3D2B1F; --brown-light: #7A5C4A;
+    --green: #2D5A3D; --green-light: #E8F5EC;
+    --red: #8B2020; --red-light: #FDEAEA;
+    --blue: #1A3F6F; --blue-light: #E8F0FB;
+    --amber: #7A4A0A; --amber-light: #FEF3E2;
+    --white: #FFFFFF; --border: rgba(200,169,110,0.3);
+    --bg: #F7F0E6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Noto Sans JP', sans-serif; background: var(--bg); color: var(--brown); min-height: 100vh; }
+
+  /* ── ログイン ── */
+  #login-screen {
+    min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1.5rem;
+  }
+  .login-box {
+    background: var(--white); border: 1px solid var(--border); border-radius: 20px;
+    padding: 2.5rem 2rem; width: 100%; max-width: 380px; text-align: center;
+  }
+  .login-box h1 { font-family: 'Cormorant Garamond', serif; font-size: 24px; color: var(--brown); margin-bottom: 0.25rem; }
+  .login-box p { font-size: 12px; color: var(--brown-light); letter-spacing: 0.1em; }
+
+  /* モード選択ボタン */
+  .mode-btn {
+    padding: 14px 8px; border-radius: 12px; border: 2px solid var(--border);
+    background: var(--cream); color: var(--brown-light); cursor: pointer;
+    font-family: 'Noto Sans JP', sans-serif; transition: all 0.15s;
+    touch-action: manipulation;
+  }
+  .mode-btn-active {
+    border-color: var(--gold); background: var(--gold-light); color: var(--gold-dark);
+  }
+
+  /* 閲覧モードバナー */
+  .viewer-banner {
+    display: none; background: linear-gradient(135deg,#2C1810,#4A2C1A);
+    padding: 10px 1.5rem; text-align: center;
+    font-size: 13px; color: var(--gold); letter-spacing: 0.05em;
+  }
+  .viewer-banner.show { display: block; }
+
+  /* ── 管理パネル ── */
+  #admin-screen { display: none; }
+  .top-bar {
+    background: linear-gradient(135deg, #2C1810, #4A2C1A);
+    padding: 1rem 1.5rem; display: flex; align-items: center; justify-content: space-between;
+  }
+  .top-bar h1 { font-family: 'Cormorant Garamond', serif; font-size: 20px; color: var(--white); }
+  .top-bar span { font-size: 12px; color: var(--gold); letter-spacing: 0.1em; }
+
+  .tab-bar { display: flex; background: var(--white); border-bottom: 1px solid var(--border); }
+  .tab { flex: 1; padding: 12px; font-size: 13px; text-align: center; cursor: pointer; color: var(--brown-light); border: none; background: none; border-bottom: 2px solid transparent; font-family: 'Noto Sans JP', sans-serif; }
+  .tab.active { color: var(--gold-dark); border-bottom-color: var(--gold); font-weight: 500; }
+
+  .tab-content { display: none; padding: 1rem; }
+  .tab-content.active { display: block; }
+
+  /* ── カード ── */
+  .card { background: var(--white); border: 1px solid var(--border); border-radius: 14px; padding: 1.25rem; margin-bottom: 1rem; }
+  .card-title { font-size: 13px; color: var(--brown-light); margin-bottom: 0.75rem; letter-spacing: 0.05em; }
+
+  /* ── ボタン ── */
+  .btn { padding: 15px 16px; border-radius: 12px; font-size: 15px; cursor: pointer; font-family: 'Noto Sans JP', sans-serif; border: 1px solid; font-weight: 500; min-height: 52px; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+  .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .btn:active:not(:disabled) { transform: scale(0.97); }
+  .btn-gold { background: linear-gradient(135deg,#C8A96E,#A8843E); color: var(--white); border-color: transparent; }
+  .btn-green { background: var(--green-light); color: var(--green); border-color: var(--green); }
+  .btn-red   { background: var(--red-light); color: var(--red); border-color: var(--red); }
+  .btn-blue  { background: var(--blue-light); color: var(--blue); border-color: var(--blue); }
+  .btn-amber { background: var(--amber-light); color: var(--amber); border-color: var(--amber); }
+  .btn-outline { background: transparent; color: var(--brown-light); border-color: var(--border); }
+  .btn-full { width: 100%; padding: 16px; font-size: 16px; min-height: 56px; }
+  .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  /* ── ステータスバッジ ── */
+  .status-badge {
+    display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 500;
+  }
+  .s-waiting  { background: var(--cream2); color: var(--brown-light); }
+  .s-active   { background: var(--green-light); color: var(--green); }
+  .s-paused   { background: var(--amber-light); color: var(--amber); }
+  .s-finished { background: var(--blue-light); color: var(--blue); }
+
+  /* ── 問題ジャンプ ── */
+  .jump-btns { display: flex; flex-wrap: wrap; gap: 6px; }
+  .jump-btn {
+    width: 48px; height: 48px; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--white); font-size: 15px; cursor: pointer; font-family: 'Noto Sans JP', sans-serif;
+    touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+  }
+  .jump-btn.current { background: var(--gold); color: var(--white); border-color: var(--gold); }
+
+  /* ── ランキング ── */
+  .rank-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .medal { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 500; flex-shrink: 0; }
+  .m1 { background: #FAEEDA; color: #633806; }
+  .m2 { background: #E8E8E8; color: #444; }
+  .m3 { background: #F5C4B3; color: #4A1B0C; }
+  .mn { background: var(--cream2); color: var(--brown-light); }
+
+  /* ── 問題編集 ── */
+  .q-edit-card { background: var(--cream); border: 1px solid var(--border); border-radius: 12px; padding: 1rem; margin-bottom: 0.75rem; }
+  .q-edit-card input, .q-edit-card select, .q-edit-card textarea {
+    width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px;
+    font-size: 13px; color: var(--brown); background: var(--white); margin-bottom: 6px;
+    font-family: 'Noto Sans JP', sans-serif;
+  }
+  .q-edit-card textarea { resize: vertical; min-height: 60px; }
+  .opt-row { display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px; padding: 10px; background: var(--white); border-radius: 10px; border: 1px solid var(--border); }
+  .opt-row-top { display: flex; gap: 6px; align-items: center; }
+  .opt-row-top input[type=text] { flex: 1; margin: 0; font-size: 14px !important; }
+  .opt-row-top label { font-size: 12px; white-space: nowrap; color: var(--brown-light); }
+  .opt-row-top input[type=radio] { width: auto; flex: none; }
+  .opt-img-row { display: flex; gap: 6px; align-items: center; }
+  .opt-img-row input[type=text] { flex: 1; margin: 0; font-size: 12px !important; color: var(--brown-light); }
+  .opt-img-preview { width: 52px; height: 52px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border); display: none; flex-shrink: 0; }
+  .opt-img-preview.show { display: block; }
+  .opt-label-badge { width: 24px; height: 24px; border-radius: 50%; background: var(--gold-light); color: var(--gold-dark); font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+
+  input[type=text], input[type=password], input[type=number] {
+    width: 100%; padding: 11px 13px; border: 1px solid var(--border); border-radius: 10px;
+    font-size: 14px; color: var(--brown); background: var(--cream);
+    font-family: 'Noto Sans JP', sans-serif; margin-bottom: 0.75rem;
+  }
+
+  .info-row { display: flex; justify-content: space-between; font-size: 13px; padding: 6px 0; border-bottom: 1px solid var(--border); }
+  .info-row:last-child { border: none; }
+  .info-label { color: var(--brown-light); }
+
+  /* ── スマホ用スティッキー操作バー ── */
+  .sticky-controls {
+    position: sticky; bottom: 0; background: var(--white);
+    border-top: 1px solid var(--border); padding: 10px 1rem 20px;
+    display: none;
+  }
+  .sticky-controls.show { display: block; }
+  .tab-content { padding-bottom: 2rem; }
+  .msg { font-size: 14px; text-align: center; padding: 0.5rem; color: var(--green); }
+  .msg.err { color: var(--red); }
+  body { -webkit-overflow-scrolling: touch; }
+  input, textarea, select { font-size: 16px !important; }
+</style>
+</head>
+<body>
+
+<!-- ===== ログイン ===== -->
+<div id="login-screen">
+  <div class="login-box">
+    <p style="font-size:11px;letter-spacing:0.2em;color:var(--gold);margin-bottom:0.5rem;">WEDDING QUIZ</p>
+    <h1>管理者パネル</h1>
+    <p style="margin-bottom:1.25rem;">ADMIN LOGIN</p>
+
+    <!-- モード選択 -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:1.25rem;">
+      <button id="mode-btn-operator" class="mode-btn mode-btn-active" onclick="selectMode('operator')">
+        <div style="font-size:22px;margin-bottom:6px;">🎛️</div>
+        <div style="font-size:14px;font-weight:500;">操作モード</div>
+      </button>
+      <button id="mode-btn-viewer" class="mode-btn" onclick="selectMode('viewer')">
+        <div style="font-size:22px;margin-bottom:6px;">👀</div>
+        <div style="font-size:14px;font-weight:500;">閲覧モード</div>
+      </button>
+    </div>
+
+    <input type="password" id="pw-input" placeholder="パスワード" onkeydown="if(event.key==='Enter')login()" />
+    <button class="btn btn-gold btn-full" onclick="login()">ログイン</button>
+    <p id="login-err" style="font-size:13px;color:var(--red);margin-top:0.75rem;"></p>
+  </div>
+</div>
+
+<!-- ===== 管理パネル ===== -->
+<div id="admin-screen">
+  <!-- 閲覧モード用バナー -->
+  <div class="viewer-banner" id="viewer-banner">👀 閲覧モード — 操作は操作モードの方が行います</div>
+
+  <div class="top-bar">
+    <div>
+      <span>WEDDING QUIZ</span>
+      <h1 id="panel-title">管理者パネル</h1>
+    </div>
+    <div id="user-count-badge" style="background:var(--gold-light);color:var(--gold-dark);padding:5px 12px;border-radius:20px;font-size:13px;">参加者: 0名</div>
+  </div>
+
+  <div class="tab-bar">
+    <button class="tab active" onclick="switchTab('t-control')">コントロール</button>
+    <button class="tab" onclick="switchTab('t-ranking')">ランキング</button>
+    <button class="tab" onclick="switchTab('t-questions')">問題編集</button>
+  </div>
+
+  <!-- ── コントロールタブ ── -->
+  <div id="t-control" class="tab-content active">
+
+    <div class="card">
+      <div class="card-title">現在の状態</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+        <span id="status-badge" class="status-badge s-waiting">待機中</span>
+        <span id="q-indicator" style="font-size:13px;color:var(--brown-light);">—</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">クイズ操作</div>
+      <div id="operator-controls">
+        <button class="btn btn-gold btn-full" style="margin-bottom:12px;font-size:18px;min-height:64px;border-radius:16px;" id="btn-start" onclick="adminAction('start')">▶ クイズ開始（第1問から）</button>
+        <div class="btn-grid" style="margin-bottom:10px;">
+          <button class="btn btn-amber" id="btn-pause" onclick="togglePause()" style="font-size:16px;">⏸ 一時停止</button>
+          <button class="btn btn-blue"  id="btn-next"  onclick="adminAction('next')" style="font-size:16px;">次の問題 →</button>
+        </div>
+        <div class="btn-grid">
+          <button class="btn btn-outline" id="btn-prev" onclick="adminAction('prev')" style="font-size:15px;">← 前の問題</button>
+          <button class="btn btn-red"   id="btn-reset" onclick="confirmReset()" style="font-size:15px;">⟳ リセット</button>
+        </div>
+      </div>
+      <!-- 閲覧モード用メッセージ -->
+      <div id="viewer-ctrl-msg" style="display:none;text-align:center;padding:1rem 0;">
+        <div style="font-size:32px;margin-bottom:8px;">🎤</div>
+        <p style="font-size:14px;color:var(--brown-light);line-height:1.7;">操作は司会者が行っています<br>現在の状態はリアルタイムで表示されます</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">問題ジャンプ</div>
+      <div class="jump-btns" id="jump-btns"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">現在の問題プレビュー</div>
+      <div id="q-preview" style="font-size:14px;color:var(--brown-light);">クイズ開始後に表示されます</div>
+    </div>
+
+    <p class="msg" id="ctrl-msg"></p>
+  </div>
+
+  <!-- ── ランキングタブ ── -->
+  <div id="t-ranking" class="tab-content">
+    <div style="display:flex;justify-content:flex-end;margin-bottom:0.75rem;">
+      <button class="btn btn-outline" onclick="loadAdminState()">更新</button>
+    </div>
+    <div class="card" id="ranking-list">
+      <p style="font-size:13px;color:var(--brown-light);text-align:center;">データを読み込み中...</p>
+    </div>
+  </div>
+
+  <!-- ── 問題編集タブ ── -->
+  <div id="t-questions" class="tab-content">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
+      <button class="btn btn-green" onclick="addQuestion()">＋ 問題を追加</button>
+      <button class="btn btn-gold" onclick="saveQuestions()">保存する</button>
+    </div>
+    <div id="q-edit-list"></div>
+    <p class="msg" id="q-save-msg"></p>
+  </div>
+</div>
+
+<script>
+const GAS_URL = "https://script.google.com/macros/s/AKfycbyhsZTfMiAghzqS6Ve5KqUnMC9_-4fIuu9SPXd2PXv9UQRu2n2_AQSCSAc_ORemEzCB0Q/exec";
+let adminPw = '';
+let adminState = null;
+let pollTimer = null;
+let currentMode = 'operator'; // 'operator' | 'viewer'
+
+// ── モード選択 ──
+function selectMode(mode) {
+  currentMode = mode;
+  document.getElementById('mode-btn-operator').className = 'mode-btn' + (mode === 'operator' ? ' mode-btn-active' : '');
+  document.getElementById('mode-btn-viewer').className   = 'mode-btn' + (mode === 'viewer'   ? ' mode-btn-active' : '');
+}
+
+// ── ログイン ──
+async function login() {
+  const pw = document.getElementById('pw-input').value;
+  const err = document.getElementById('login-err');
+  err.textContent = 'ログイン中...';
+  try {
+    const data = await gasGet({ action:'adminState', admin:'1', password: pw });
+    if (!data.ok) { err.textContent = data.error || 'ログイン失敗'; return; }
+    adminPw = pw;
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('admin-screen').style.display = 'block';
+
+    // モードによってUI切り替え
+    const isViewer = currentMode === 'viewer';
+    document.getElementById('viewer-banner').classList.toggle('show', isViewer);
+    document.getElementById('operator-controls').style.display = isViewer ? 'none' : 'block';
+    document.getElementById('viewer-ctrl-msg').style.display   = isViewer ? 'block' : 'none';
+    document.getElementById('panel-title').textContent = isViewer ? '閲覧パネル' : '管理者パネル';
+
+    // 閲覧モードでは問題編集タブを非表示
+    if (isViewer) {
+      document.querySelectorAll('.tab').forEach(t => {
+        if (t.textContent.includes('問題編集')) t.style.display = 'none';
+      });
+    }
+
+    adminState = data;
+    renderAll(data);
+    startPolling();
+  } catch(e) {
+    err.textContent = 'エラー: ' + e.message;
+  }
+}
+
+// ── タブ切り替え ──
+function switchTab(id) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+  if (id === 't-ranking') loadAdminState();
+  if (id === 't-questions') renderQEdit();
+}
+
+// ── API ──
+async function gasGet(params) {
+  const url = GAS_URL + '?' + new URLSearchParams(params).toString();
+  const res = await fetch(url);
+  return res.json();
+}
+async function gasPost(data) {
+  const res = await fetch(GAS_URL, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data) });
+  return res.json();
+}
+
+// ── ポーリング ──
+function startPolling() {
+  pollTimer = setInterval(loadAdminState, 3000);
+}
+async function loadAdminState() {
+  try {
+    const data = await gasGet({ action:'adminState', admin:'1', password: adminPw });
+    if (!data.ok) return;
+    adminState = data;
+    renderAll(data);
+  } catch(e) {}
+}
+
+// ── 描画 ──
+function renderAll(data) {
+  const state = data.state;
+  const qs = data.questions || [];
+  const ranking = data.ranking || [];
+
+  // ユーザー数
+  document.getElementById('user-count-badge').textContent = `参加者: ${data.userCount || 0}名`;
+
+  // ステータスバッジ
+  const badge = document.getElementById('status-badge');
+  badge.className = 'status-badge';
+  if (state.status === 'waiting') { badge.classList.add('s-waiting'); badge.textContent = '待機中'; }
+  else if (state.status === 'finished') { badge.classList.add('s-finished'); badge.textContent = 'クイズ終了'; }
+  else if (state.paused) { badge.classList.add('s-paused'); badge.textContent = '一時停止中'; }
+  else { badge.classList.add('s-active'); badge.textContent = '回答受付中'; }
+
+  // 問題インジケーター
+  document.getElementById('q-indicator').textContent =
+    state.status === 'active' || state.status === 'finished'
+      ? `問題 ${state.currentQ + 1} / ${qs.length}` : '—';
+
+  // ジャンプボタン
+  const jb = document.getElementById('jump-btns');
+  jb.innerHTML = qs.map((q, i) =>
+    `<button class="jump-btn ${state.currentQ === i && state.status !== 'waiting' ? 'current' : ''}" onclick="jumpTo(${i})">${i+1}</button>`
+  ).join('');
+
+  // 問題プレビュー
+  const qp = document.getElementById('q-preview');
+  if (state.status !== 'waiting' && qs[state.currentQ]) {
+    const q = qs[state.currentQ];
+    qp.innerHTML = `
+      <div style="font-size:11px;color:var(--gold-dark);margin-bottom:4px;">${q.category}</div>
+      <div style="font-weight:500;margin-bottom:8px;line-height:1.5;">${q.question}</div>
+      ${q.options.map((o, i) => `
+        <div style="font-size:13px;padding:4px 0;color:${i===q.correctIndex?'var(--green)':'var(--brown-light)'};">
+          ${['A','B','C','D'][i]}. ${o} ${i===q.correctIndex?'✓':''}
+        </div>`).join('')}`;
+  }
+
+  // 一時停止ボタン更新
+  const pb = document.getElementById('btn-pause');
+  pb.textContent = state.paused ? '▶ 再開' : '⏸ 一時停止';
+  pb.className = state.paused ? 'btn btn-green' : 'btn btn-amber';
+
+  // ランキング
+  renderRanking(ranking, qs.length);
+}
+
+function renderRanking(ranking, totalQ) {
+  const el = document.getElementById('ranking-list');
+  if (!ranking.length) { el.innerHTML = '<p style="font-size:13px;color:var(--brown-light);text-align:center;">まだ参加者がいません</p>'; return; }
+  el.innerHTML = ranking.map((r, i) => {
+    const mc = i===0?'m1':i===1?'m2':i===2?'m3':'mn';
+    return `<div class="rank-row">
+      <div class="medal ${mc}">${i+1}</div>
+      <span style="flex:1;font-size:14px;">${r.name}</span>
+      <span style="font-size:15px;font-weight:500;color:var(--gold-dark);">${r.score}<span style="font-size:12px;font-weight:400;color:var(--brown-light);">/${totalQ}</span></span>
+    </div>`;
+  }).join('');
+}
+
+// ── 管理操作 ──
+async function adminAction(action, extra = {}) {
+  const msg = document.getElementById('ctrl-msg');
+  msg.textContent = '処理中...'; msg.className = 'msg';
+  try {
+    const data = await gasGet({ action, admin:'1', password: adminPw, ...extra });
+    msg.textContent = data.message || (data.ok ? '完了' : data.error);
+    if (!data.ok) msg.className = 'msg err';
+    await loadAdminState();
+  } catch(e) { msg.textContent = 'エラー: ' + e.message; msg.className = 'msg err'; }
+}
+
+async function togglePause() {
+  const paused = adminState?.state?.paused;
+  await adminAction(paused ? 'resume' : 'pause');
+}
+
+function jumpTo(idx) { adminAction('jump', { index: idx }); }
+
+function confirmReset() {
+  if (confirm('⚠ 全参加者データを削除してリセットします。よろしいですか？')) {
+    adminAction('reset');
+  }
+}
+
+// ── 問題編集 ──
+let editQuestions = [];
+
+function renderQEdit() {
+  editQuestions = adminState?.questions ? JSON.parse(JSON.stringify(adminState.questions)) : [];
+  const el = document.getElementById('q-edit-list');
+  el.innerHTML = '';
+  editQuestions.forEach((q, i) => el.appendChild(buildQCard(q, i)));
+}
+
+function buildQCard(q, i) {
+  const d = document.createElement('div');
+  d.className = 'q-edit-card';
+  d.id = 'qcard-' + i;
+  const imgs = q.images || ['','','',''];
+  d.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <span style="font-size:13px;font-weight:500;">問題 ${i+1}</span>
+      <button class="btn btn-red" style="padding:4px 10px;font-size:12px;" onclick="removeQuestion(${i})">削除</button>
+    </div>
+    <input type="text" value="${q.category}" placeholder="カテゴリ（例: 出会い）" onchange="editQuestions[${i}].category=this.value">
+    <textarea placeholder="問題文" onchange="editQuestions[${i}].question=this.value">${q.question}</textarea>
+    <p style="font-size:11px;color:var(--brown-light);margin-bottom:8px;">📷 画像はGoogle DriveのURLを貼り付け（省略可）</p>
+    ${(q.options || ['','','','']).map((o, j) => `
+    <div class="opt-row" id="optrow-${i}-${j}">
+      <div class="opt-row-top">
+        <input type="radio" name="correct-${i}" value="${j}" ${q.correctIndex===j?'checked':''} onchange="setCorrect(${i},${j})">
+        <label>正解</label>
+        <div class="opt-label-badge">${['A','B','C','D'][j]}</div>
+        <input type="text" value="${o}" placeholder="選択肢テキスト（省略可）" onchange="editQuestions[${i}].options[${j}]=this.value">
+      </div>
+      <div class="opt-img-row">
+        <span style="font-size:11px;color:var(--brown-light);white-space:nowrap;">画像URL:</span>
+        <input type="text" value="${imgs[j]||''}" placeholder="https://drive.google.com/..." 
+          onchange="editQuestions[${i}].images[${j}]=this.value;updateImgPreview('${i}','${j}',this.value)">
+        <img id="imgprev-${i}-${j}" class="opt-img-preview ${imgs[j]?'show':''}" src="${imgs[j]||''}" onerror="this.classList.remove('show')">
+      </div>
+    </div>`).join('')}
+  `;
+  // imagesフィールドを初期化
+  if (!editQuestions[i].images) editQuestions[i].images = ['','','',''];
+  return d;
+}
+
+function setCorrect(qi, j) { editQuestions[qi].correctIndex = j; }
+
+function updateImgPreview(qi, j, url) {
+  const img = document.getElementById(`imgprev-${qi}-${j}`);
+  if (!img) return;
+  if (url) {
+    img.src = convertDriveUrl(url);
+    img.classList.add('show');
+    img.onerror = () => img.classList.remove('show');
+  } else {
+    img.classList.remove('show');
+  }
+}
+
+// Google Drive共有URLを直接表示可能なURLに変換
+function convertDriveUrl(url) {
+  if (!url) return '';
+  const m = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  if (m) return `https://drive.google.com/thumbnail?id=${m[1]}&sz=w400`;
+  return url;
+}
+
+function addQuestion() {
+  editQuestions.push({ category:'', question:'', options:['','','',''], images:['','','',''], correctIndex:0 });
+  const el = document.getElementById('q-edit-list');
+  el.appendChild(buildQCard(editQuestions[editQuestions.length-1], editQuestions.length-1));
+}
+
+function removeQuestion(i) {
+  editQuestions.splice(i, 1);
+  renderQEdit();
+}
+
+async function saveQuestions() {
+  const msg = document.getElementById('q-save-msg');
+  msg.textContent = '保存中...'; msg.className = 'msg';
+  try {
+    const data = await gasPost({ action:'saveQuestions', password: adminPw, questions: editQuestions });
+    msg.textContent = data.ok ? '問題を保存しました！' : (data.error || '失敗');
+    if (!data.ok) msg.className = 'msg err';
+    await loadAdminState();
+  } catch(e) { msg.textContent = 'エラー: ' + e.message; msg.className = 'msg err'; }
+}
+</script>
+</body>
+</html>
